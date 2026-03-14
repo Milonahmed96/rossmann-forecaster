@@ -12,11 +12,30 @@ MSc Data Science final project notebook into a clean, tested Python package.
 
 | Model            | R²         | RMSPE      | RMSE (€/store/day) |
 |------------------|------------|------------|---------------------|
-| Ridge (baseline) | 0.3532     | 0.4360     | 2,479               |
-| LSTM (optimised) | 0.8232     | 0.3592     | 1,163               |
+| Ridge (tuned)    | 0.4722     | 0.4321     | 2,275               |
+| LSTM (optimised) | 0.8308     | 0.3650     | 1,157               |
 | **LightGBM**     | **0.8696** | **0.3409** | **1,043**           |
 
-LightGBM reduces per-store prediction error by 58% versus the Ridge baseline.
+LightGBM reduces per-store prediction error by 54% versus the Ridge baseline.
+EarlyStopping triggered at epoch 44 for LSTM (best weights from epoch 39).
+
+## SHAP Feature Importance (Top 10)
+
+| Rank | Feature | Mean \|SHAP\| |
+|------|---------|--------------|
+| 1 | Sales(Rolling_Mean_7) | 0.2245 |
+| 2 | Promo | 0.1542 |
+| 3 | DayOfWeek | 0.0516 |
+| 4 | Day | 0.0509 |
+| 5 | WeekOfYear | 0.0209 |
+| 6 | DayOfYear | 0.0168 |
+| 7 | Sales(Lag_7) | 0.0166 |
+| 8 | StoreType | 0.0151 |
+| 9 | Assortment | 0.0082 |
+| 10 | CompetitionDistance | 0.0070 |
+
+Promotions confirmed as the second strongest sales driver after recent
+sales history — validating the MSc research focus on promotional influence.
 
 ## Project Structure
 ```
@@ -50,13 +69,13 @@ cp .env.example .env
 
 ## Usage
 ```bash
-# Run full pipeline (all three models with tuning)
+# Run full pipeline (all three models with tuning + SHAP)
 python main.py
 
-# Run LightGBM only (fastest)
+# Run LightGBM only with tuning
 python main.py --model lightgbm
 
-# Run without hyperparameter tuning (development mode)
+# Run without hyperparameter tuning (development mode — fast)
 python main.py --no-tune --skip-lstm
 
 # Skip SHAP analysis
@@ -75,6 +94,8 @@ in your `.env` file.
 | train.csv | 1,017,209 | Daily sales per store (Jan 2013 – Jul 2015) |
 | store.csv | 1,115 | Store metadata |
 | After preprocessing | 844,338 | Open days with non-zero sales only |
+| Training set | 781,898 | ~92.5% of data |
+| Test set | 62,440 | Final 8 weeks — ~7.5% of data |
 
 ## Methodology
 
@@ -91,10 +112,23 @@ in your `.env` file.
 - **Promo2:** Condition_of_Promo2, Promo2Status — promotional lifecycle
 - **Lag:** Sales(Lag_7), Sales(Rolling_Mean_7) — grouped by store, no leakage
 
-### Models
-- **Ridge:** OHE features, StandardScaler, RandomizedSearchCV over alpha
-- **LightGBM:** Label encoded features, RandomizedSearchCV over 7 parameters
-- **LSTM:** MinMax scaled features, timesteps=1, EarlyStopping(patience=5)
+### Models and Tuning
+
+**Ridge Regression**
+- One-hot encoded features, StandardScaler
+- RandomizedSearchCV over alpha (logspace -4 to 2, 10 iterations)
+- Best alpha: 10.72
+
+**LightGBM** ← Best Model
+- Label encoded features
+- RandomizedSearchCV over 7 parameters, 10 iterations, 3-fold TimeSeriesSplit
+- Best params: subsample=0.7, num_leaves=70, n_estimators=1500,
+  min_child_samples=100, max_depth=20, learning_rate=0.01, colsample_bytree=0.9
+
+**LSTM**
+- MinMax scaled features, timesteps=1
+- Architecture: LSTM(128) → Dropout(0.2) → LSTM(64) → Dropout(0.2) → Dense(1)
+- EarlyStopping(patience=5) — stopped at epoch 44, best weights from epoch 39
 
 ### Evaluation
 - Primary: RMSPE — scale-free, treats all 1,115 stores equally
@@ -103,11 +137,11 @@ in your `.env` file.
 
 ## Key Findings
 
-- Promotions increase average daily sales by ~20% across all store types
-- `Sales(Rolling_Mean_7)` is the strongest predictor (confirmed by SHAP)
-- LightGBM outperforms LSTM on this tabular dataset — engineered lag features
-  already capture temporal patterns that LSTM tries to learn implicitly
-- Store type B shows the highest promotional lift (~25%)
+- `Sales(Rolling_Mean_7)` is the strongest predictor (SHAP=0.2245)
+- `Promo` is the second strongest driver (SHAP=0.1542) — validates research focus
+- LightGBM outperforms LSTM — engineered lag features already capture
+  temporal patterns that LSTM tries to learn implicitly
+- Full pipeline runs in ~25 minutes on a standard laptop
 
 ## Tests
 ```bash
@@ -117,4 +151,3 @@ pytest tests/ -v   # 59 tests, all passing
 ## Licence
 
 MIT
-
