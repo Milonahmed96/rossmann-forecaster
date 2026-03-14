@@ -160,13 +160,13 @@ def _add_lag_features(df: pd.DataFrame) -> pd.DataFrame:
     which is correct for a store's first 7 trading days in the dataset.
     """
     df["Sales(Lag_7)"] = (
-        df.groupby("Store")["Sales"]
+        df.groupby("Store", observed=True)["Sales"]
         .shift(7)
         .fillna(0)
     )
 
     df["Sales(Rolling_Mean_7)"] = (
-        df.groupby("Store")["Sales"]
+        df.groupby("Store", observed=True)["Sales"]
         .transform(lambda x: x.shift(7).rolling(7).mean())
         .fillna(0)
     )
