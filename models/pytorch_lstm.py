@@ -178,24 +178,19 @@ class PyTorchLSTM:
         return np.expm1(log_preds)      # reverse log transform → Euros
 
     def evaluate(self, X_scaled, Y_true, store_ids, window_size=7):
-        """
-        Evaluate on a test set. Returns dict with rmspe, rmse, r2.
-        Aligns predictions with the correct target rows automatically.
-        """
         if self.model is None:
             raise RuntimeError("Model not fitted. Call fit() first.")
 
-        # Build dataset to get the index (tells us which rows are targets)
         ds = SequenceDataset(X_scaled, Y_true, store_ids, window_size)
-
-        # Get target row indices
         target_indices = np.array([t for _, t in ds.index])
 
-        # Get actual sales values at those target rows (reverse log transform)
-        Y_actual = np.expm1(Y_true[target_indices])
+        # Y_true is log-scale — slice the correct target rows
+        Y_true_aligned = Y_true[target_indices]
 
-        # Get predictions
-        Y_pred = self.predict(X_scaled, store_ids, window_size)
+        # predict() returns Euros — convert back to log scale for metrics
+        Y_pred_euros = self.predict(X_scaled, store_ids, window_size)
+        Y_pred_log   = np.log1p(Y_pred_euros)
 
         from evaluation.metrics import evaluate_model
-        return evaluate_model(Y_actual, Y_pred)
+        return evaluate_model(Y_true_aligned, Y_pred_log)
+
