@@ -10,14 +10,18 @@ MSc Data Science final project notebook into a clean, tested Python package.
 
 ## Results
 
-| Model            | R²         | RMSPE      | RMSE (€/store/day) |
-|------------------|------------|------------|---------------------|
-| Ridge (tuned)    | 0.4722     | 0.4321     | 2,275               |
-| LSTM (optimised) | 0.8308     | 0.3650     | 1,157               |
-| **LightGBM**     | **0.8696** | **0.3409** | **1,043**           |
+| Model | R² | RMSPE | RMSE (€/store/day) | Notes |
+|---|---|---|---|---|
+| Ridge Regression | 0.4722 | 0.4321 | 2,275 | Baseline — L2 regularisation |
+| Keras LSTM (TIMESTEPS=1) | 0.8308 | 0.3650 | 1,158 | Architectural flaw — no temporal memory |
+| LightGBM | 0.8696 | 0.3409 | 1,043 | Previous best — tuned, 1,500 trees |
+| **PyTorch LSTM (window=7)** | **0.9131** | **0.2871** | **825** | **Best model — proper sequential input** |
 
-LightGBM reduces per-store prediction error by 54% versus the Ridge baseline.
-EarlyStopping triggered at epoch 44 for LSTM (best weights from epoch 39).
+### Key finding
+
+The PyTorch LSTM with 7-day sequence windows achieves RMSPE 0.2871 — a **15.8% improvement over LightGBM** (0.3409) and a **21.3% improvement over the Keras LSTM** (0.3650).
+
+The Keras LSTM used `TIMESTEPS=1`, making it functionally a dense network with no temporal memory. Fixing this architectural flaw — feeding 7 consecutive days as a proper sequence — allowed the LSTM to learn weekly sales rhythms and promotional dynamics that LightGBM can only approximate through engineered lag features.
 
 ## SHAP Feature Importance (Top 10)
 
