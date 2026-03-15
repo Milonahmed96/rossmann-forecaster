@@ -108,14 +108,20 @@ def prepare_data(df: pd.DataFrame) -> dict:
 
     print("Data preparation complete.")
 
+    # ── Step 8: Extract Store IDs for sequence windowing ─────────────────────
+    store_ids_train = df["Store"].iloc[:split_index].values
+    store_ids_test  = df["Store"].iloc[split_index:].values
+
     return {
-        "X_train_LE":     X_train_LE,
-        "X_test_LE":      X_test_LE,
-        "X_train_OHE":    X_train_OHE,
-        "X_test_OHE":     X_test_OHE,
-        "Y_train":        Y_train,
-        "Y_test":         Y_test,
-        "X_train_scaled": X_train_scaled,
-        "X_test_scaled":  X_test_scaled,
-        "scaler_X":       scaler_X,
+        "X_train_LE":       X_train_LE,
+        "X_test_LE":        X_test_LE,
+        "X_train_OHE":      X_train_OHE,
+        "X_test_OHE":       X_test_OHE,
+        "Y_train":          Y_train,
+        "Y_test":           Y_test,
+        "X_train_scaled":   X_train_scaled,
+        "X_test_scaled":    X_test_scaled,
+        "scaler_X":         scaler_X,
+        "store_ids_train":  store_ids_train,
+        "store_ids_test":   store_ids_test,
     }
