@@ -4,12 +4,7 @@
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Tests](https://github.com/Milonahmed96/rossmann-forecaster/workflows/Run%20Tests/badge.svg)
 
-# Rossmann Store Sales Forecaster
-
-A production-grade machine learning package for daily sales forecasting
-across 1,115 Rossmann drug stores in Germany. The system covers the full
-modelling lifecycle — data ingestion, feature engineering, model training,
-evaluation, and calibrated uncertainty quantification.
+A production-grade machine learning package for daily sales forecasting across 1,115 Rossmann drug stores in Germany. The system covers the full modelling lifecycle — data ingestion, feature engineering, model training, evaluation, and calibrated uncertainty quantification.
 
 ## Versions
 
@@ -17,85 +12,75 @@ evaluation, and calibrated uncertainty quantification.
 |---|---|---|
 | v1.0 | Ridge Regression, LightGBM, Keras LSTM | LightGBM RMSPE 0.3409 |
 | v2.0 | PyTorch LSTM with 7-day sequence windows | RMSPE 0.2871 — 15.8% improvement over LightGBM |
-| v3.0 | Calibrated prediction intervals (conformal prediction) | LightGBM 90% coverage, mean width €3,049 |
+| v3.0 | Calibrated prediction intervals via conformal prediction | LightGBM 90% coverage, mean width €3,049 |
 
-git add README.md requirements.txt
-git commit -m "docs: update README introduction and requirements.txt with torch"
-git pull origin main --rebase
-git push origin main
+---
 
 ## Results
 
-| Model | R² | RMSPE | RMSE (€/store/day) | Notes |
+### Point Predictions
+
+| Model | R² | RMSPE | RMSE (€) | Notes |
 |---|---|---|---|---|
-| Ridge Regression | 0.4722 | 0.4321 | 2,275 | Baseline — L2 regularisation |
+| Ridge Regression | 0.4722 | 0.4321 | 2,275 | Baseline |
 | Keras LSTM (TIMESTEPS=1) | 0.8308 | 0.3650 | 1,158 | Architectural flaw — no temporal memory |
-| LightGBM | 0.8696 | 0.3409 | 1,043 | Previous best — tuned, 1,500 trees |
-| **PyTorch LSTM (window=7)** | **0.9131** | **0.2871** | **825** | **Best model — proper sequential input** |
+| LightGBM | 0.8696 | 0.3409 | 1,043 | Tuned, 1,500 trees |
+| **PyTorch LSTM (window=7)** | **0.9131** | **0.2871** | **825** | **Best model** |
 
-### Key finding
+The PyTorch LSTM with 7-day sequence windows achieves RMSPE 0.2871 — a 15.8% improvement over LightGBM. The Keras LSTM used `TIMESTEPS=1`, making it functionally a dense network with no temporal memory. Feeding 7 consecutive days as a proper sequence allows the LSTM to learn weekly sales rhythms that LightGBM can only approximate through engineered lag features.
 
-The PyTorch LSTM with 7-day sequence windows achieves RMSPE 0.2871 — a **15.8% improvement over LightGBM** (0.3409) and a **21.3% improvement over the Keras LSTM** (0.3650).
+### Prediction Intervals (v3.0)
 
-The Keras LSTM used `TIMESTEPS=1`, making it functionally a dense network with no temporal memory. Fixing this architectural flaw — feeding 7 consecutive days as a proper sequence — allowed the LSTM to learn weekly sales rhythms and promotional dynamics that LightGBM can only approximate through engineered lag features.
+Calibrated 90% prediction intervals using split conformal prediction. Every interval is `[prediction - q, prediction + q]`, clipped to zero on the lower bound.
 
-## Prediction Intervals — Conformal Prediction (v3.0)
-
-Calibrated 90% prediction intervals using split conformal prediction,
-wrapping both models with a model-agnostic `ConformalPredictor` class.
-
-| Model | Point RMSPE | q (€) | Coverage | Mean Width |
+| Model | Point RMSPE | q (€) | Empirical Coverage | Mean Width |
 |---|---|---|---|---|
 | LightGBM | 0.3409 | 1,525 | 0.900 | €3,049 |
 | PyTorch LSTM | 0.2871 | 4,682 | 0.877 | €9,191 |
 
-**q** is the interval half-width: every prediction interval is
-`[prediction - q, prediction + q]`, clipped to zero on the lower bound.
+LightGBM produces better-calibrated intervals despite weaker point predictions. The PyTorch LSTM's calibration period (weeks 49–52) has lower errors than the test period (weeks 53–60, which includes Christmas trading). Conformal prediction correctly exposes this non-stationarity rather than hiding it.
 
-**Key finding:** LightGBM produces better-calibrated intervals despite
-weaker point predictions. The PyTorch LSTM's calibration period
-(weeks 49–52) has lower errors than the test period (weeks 53–60,
-Christmas trading) — conformal prediction correctly exposes this
-non-stationarity rather than hiding it.
-
-## SHAP Feature Importance (Top 10)
+### SHAP Feature Importance (LightGBM)
 
 | Rank | Feature | Mean \|SHAP\| |
-|------|---------|--------------|
-| 1 | Sales(Rolling_Mean_7) | 0.2245 |
+|---|---|---|
+| 1 | Sales(Rolling\_Mean\_7) | 0.2245 |
 | 2 | Promo | 0.1542 |
 | 3 | DayOfWeek | 0.0516 |
 | 4 | Day | 0.0509 |
 | 5 | WeekOfYear | 0.0209 |
 | 6 | DayOfYear | 0.0168 |
-| 7 | Sales(Lag_7) | 0.0166 |
+| 7 | Sales(Lag\_7) | 0.0166 |
 | 8 | StoreType | 0.0151 |
 | 9 | Assortment | 0.0082 |
 | 10 | CompetitionDistance | 0.0070 |
 
-Promotions confirmed as the second strongest sales driver after recent
-sales history — validating the MSc research focus on promotional influence.
+---
 
 ## Project Structure
 ```
 rossmann-forecaster/
 ├── data/
-│   ├── loader.py            # Load and merge train.csv + store.csv
-│   ├── preprocessor.py      # Clean data, handle nulls, convert dtypes
-│   ├── feature_engineer.py  # Lag features, promo features, temporal features
-│   └── splitter.py          # Encode, scale, and split into train/test
+│   ├── loader.py              # Load and merge train.csv + store.csv
+│   ├── preprocessor.py        # Clean data, handle nulls, convert dtypes
+│   ├── feature_engineer.py    # Lag features, promo features, temporal features
+│   ├── splitter.py            # Encode, scale, and split into train/test
+│   └── sequence_dataset.py    # PyTorch Dataset with per-store sliding windows
 ├── models/
-│   ├── ridge_model.py       # Ridge Regression with tuning
-│   ├── lightgbm_model.py    # LightGBM with tuning (best model)
-│   └── lstm_model.py        # LSTM baseline and optimised
+│   ├── ridge_model.py         # Ridge Regression with tuning
+│   ├── lightgbm_model.py      # LightGBM with tuning
+│   ├── lstm_model.py          # Keras LSTM (TIMESTEPS=1)
+│   ├── pytorch_lstm.py        # PyTorch LSTM with 7-day sequence windows
+│   └── conformal_predictor.py # Model-agnostic conformal prediction wrapper
 ├── evaluation/
-│   ├── metrics.py           # RMSPE, RMSE, R² implementations
-│   └── shap_analysis.py     # SHAP feature importance
-├── tests/                   # 59 unit tests — all passing
-├── configs/                 # Model hyperparameters
-├── notebooks/               # Exploratory data analysis
-└── main.py                  # Entry point — runs full pipeline
+│   ├── metrics.py             # RMSPE, RMSE, R²
+│   └── shap_analysis.py       # SHAP feature importance
+├── tests/                     # 17 unit tests — all passing
+├── configs/                   # Model hyperparameters
+└── main.py                    # Entry point — runs full pipeline
 ```
+
+---
 
 ## Installation
 ```bash
@@ -106,87 +91,53 @@ cp .env.example .env
 # Edit .env — set DATA_DIR to your local folder containing train.csv and store.csv
 ```
 
+---
+
 ## Usage
 ```bash
-# Run full pipeline (all three models with tuning + SHAP)
+# Full pipeline — all models with tuning and SHAP
 python main.py
 
-# Run LightGBM only with tuning
+# Single model
 python main.py --model lightgbm
+python main.py --model pytorch_lstm --no-shap
 
-# Run without hyperparameter tuning (development mode — fast)
-python main.py --no-tune --skip-lstm
+# Development mode — fast
+python main.py --skip-lstm --no-tune --no-shap
 
-# Skip SHAP analysis
-python main.py --no-shap
+# Run tests
+pytest tests/ -v
 ```
+
+---
 
 ## Dataset
 
 Rossmann Store Sales — [Kaggle Competition](https://www.kaggle.com/c/rossmann-store-sales)
 
-Place `train.csv` and `store.csv` in the directory specified by `DATA_DIR`
-in your `.env` file.
+Place `train.csv` and `store.csv` in the directory specified by `DATA_DIR` in your `.env` file.
 
 | Dataset | Rows | Description |
-|---------|------|-------------|
+|---|---|---|
 | train.csv | 1,017,209 | Daily sales per store (Jan 2013 – Jul 2015) |
 | store.csv | 1,115 | Store metadata |
-| After preprocessing | 844,338 | Open days with non-zero sales only |
-| Training set | 781,898 | ~92.5% of data |
-| Test set | 62,440 | Final 8 weeks — ~7.5% of data |
+| After preprocessing | 844,338 | Open days only |
+| Training set | 781,898 | First ~92.5% by date |
+| Test set | 62,440 | Final 8 weeks |
+
+---
 
 ## Methodology
 
-### Data Preparation
-- Removed closed store days — 172,871 rows dropped
-- Log-transformed target `np.log1p(Sales)` to reduce right skew
-- Filled `CompetitionDistance` NaNs with median (2,320m)
-- Time-based train/test split — final 8 weeks as test set (no data leakage)
+**Data preparation** — Removed closed store days (172,871 rows), log-transformed target `np.log1p(Sales)`, filled `CompetitionDistance` NaNs with median (2,320m), time-based train/test split with no data leakage.
 
-### Feature Engineering
-- **Temporal:** Year, Month, Day, DayOfWeek, WeekOfYear, DayOfYear
-- **Competition:** CompetitionOpen — months since competition opened
-- **Holiday:** Is_Holiday — combined StateHoliday and SchoolHoliday flag
-- **Promo2:** Condition_of_Promo2, Promo2Status — promotional lifecycle
-- **Lag:** Sales(Lag_7), Sales(Rolling_Mean_7) — grouped by store, no leakage
+**Feature engineering** — Temporal features (Year, Month, Day, DayOfWeek, WeekOfYear, DayOfYear), competition features (CompetitionOpen), holiday flag (Is_Holiday), promotional lifecycle features (Condition_of_Promo2, Promo2Status), and lag features (Sales\_Lag\_7, Sales\_Rolling\_Mean\_7) grouped by store.
 
-### Models and Tuning
+**Evaluation** — Primary metric: RMSPE (scale-free, treats all 1,115 stores equally). Secondary: RMSE in Euros, R² on log scale.
 
-**Ridge Regression**
-- One-hot encoded features, StandardScaler
-- RandomizedSearchCV over alpha (logspace -4 to 2, 10 iterations)
-- Best alpha: 10.72
-
-**LightGBM** ← Best Model
-- Label encoded features
-- RandomizedSearchCV over 7 parameters, 10 iterations, 3-fold TimeSeriesSplit
-- Best params: subsample=0.7, num_leaves=70, n_estimators=1500,
-  min_child_samples=100, max_depth=20, learning_rate=0.01, colsample_bytree=0.9
-
-**LSTM**
-- MinMax scaled features, timesteps=1
-- Architecture: LSTM(128) → Dropout(0.2) → LSTM(64) → Dropout(0.2) → Dense(1)
-- EarlyStopping(patience=5) — stopped at epoch 44, best weights from epoch 39
-
-### Evaluation
-- Primary: RMSPE — scale-free, treats all 1,115 stores equally
-- Secondary: RMSE (Euro), R² (goodness of fit on log scale)
-- SHAP analysis confirms promotional features as primary sales drivers
-
-## Key Findings
-
-- `Sales(Rolling_Mean_7)` is the strongest predictor (SHAP=0.2245)
-- `Promo` is the second strongest driver (SHAP=0.1542) — validates research focus
-- LightGBM outperforms LSTM — engineered lag features already capture
-  temporal patterns that LSTM tries to learn implicitly
-- Full pipeline runs in ~25 minutes on a standard laptop
-
-## Tests
-```bash
-pytest tests/ -v   # 59 tests, all passing
-```
+---
 
 ## Licence
 
 MIT
+```
