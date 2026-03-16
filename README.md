@@ -4,9 +4,25 @@
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Tests](https://github.com/Milonahmed96/rossmann-forecaster/workflows/Run%20Tests/badge.svg)
 
-Predicting daily promotional sales for 1,115 Rossmann drug stores across
-Germany using LightGBM, LSTM, and Ridge Regression. Converted from an
-MSc Data Science final project notebook into a clean, tested Python package.
+# Rossmann Store Sales Forecaster
+
+A production-grade machine learning package for daily sales forecasting
+across 1,115 Rossmann drug stores in Germany. The system covers the full
+modelling lifecycle — data ingestion, feature engineering, model training,
+evaluation, and calibrated uncertainty quantification.
+
+## Versions
+
+| Version | Capability | Key Result |
+|---|---|---|
+| v1.0 | Ridge Regression, LightGBM, Keras LSTM | LightGBM RMSPE 0.3409 |
+| v2.0 | PyTorch LSTM with 7-day sequence windows | RMSPE 0.2871 — 15.8% improvement over LightGBM |
+| v3.0 | Calibrated prediction intervals (conformal prediction) | LightGBM 90% coverage, mean width €3,049 |
+
+git add README.md requirements.txt
+git commit -m "docs: update README introduction and requirements.txt with torch"
+git pull origin main --rebase
+git push origin main
 
 ## Results
 
