@@ -23,6 +23,25 @@ The PyTorch LSTM with 7-day sequence windows achieves RMSPE 0.2871 — a **15.8%
 
 The Keras LSTM used `TIMESTEPS=1`, making it functionally a dense network with no temporal memory. Fixing this architectural flaw — feeding 7 consecutive days as a proper sequence — allowed the LSTM to learn weekly sales rhythms and promotional dynamics that LightGBM can only approximate through engineered lag features.
 
+## Prediction Intervals — Conformal Prediction (v3.0)
+
+Calibrated 90% prediction intervals using split conformal prediction,
+wrapping both models with a model-agnostic `ConformalPredictor` class.
+
+| Model | Point RMSPE | q (€) | Coverage | Mean Width |
+|---|---|---|---|---|
+| LightGBM | 0.3409 | 1,525 | 0.900 | €3,049 |
+| PyTorch LSTM | 0.2871 | 4,682 | 0.877 | €9,191 |
+
+**q** is the interval half-width: every prediction interval is
+`[prediction - q, prediction + q]`, clipped to zero on the lower bound.
+
+**Key finding:** LightGBM produces better-calibrated intervals despite
+weaker point predictions. The PyTorch LSTM's calibration period
+(weeks 49–52) has lower errors than the test period (weeks 53–60,
+Christmas trading) — conformal prediction correctly exposes this
+non-stationarity rather than hiding it.
+
 ## SHAP Feature Importance (Top 10)
 
 | Rank | Feature | Mean \|SHAP\| |
