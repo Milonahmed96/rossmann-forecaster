@@ -215,19 +215,6 @@ Place `train.csv` and `store.csv` in the directory set by `DATA_DIR` in `.env`.
 
 ---
 
-
-| Project | Description | Key Result |
-|---|---|---|
-| P1 — Rossmann Reborn | Production Python package from notebook | This repo — v1.0 |
-| P2 — Beat Your Model | PyTorch LSTM from scratch | RMSPE=0.2871 — v2.0 |
-| P3 — Predictions to Intervals | Conformal prediction intervals | 90% coverage — v3.0 |
-| P4 — Document Search RAG | End-to-end RAG with evaluation | 96% accuracy |
-| P5 — Domain Fine-tuning | QLoRA fine-tuned Phi-3-mini | 64% triage accuracy |
-| P6 — Financial Research Agent | Autonomous LangGraph agent | Live HF Spaces |
-| **P7 — Production System** | **FastAPI + Docker + AWS + MLflow + Drift** | **This release** |
-
----
-
 ## Operations
 
 See [RUNBOOK.md](RUNBOOK.md) for full operations guide including:
